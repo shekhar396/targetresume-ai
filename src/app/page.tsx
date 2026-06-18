@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const workflowSteps = [
   "LinkedIn text",
   "Target role/company",
@@ -32,12 +34,12 @@ export default function Home() {
               specific role and company.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <a
+              <Link
                 className="inline-flex min-h-12 items-center justify-center rounded-md bg-[color:var(--primary)] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[color:var(--primary-dark)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)] focus:ring-offset-2"
-                href="#workflow"
+                href="/builder"
               >
                 Start Building Resume
-              </a>
+              </Link>
               <span className="text-sm text-[color:var(--muted)]">
                 OpenAI and PDF export arrive after the workflow shell.
               </span>
