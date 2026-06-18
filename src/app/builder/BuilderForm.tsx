@@ -50,7 +50,9 @@ export function BuilderForm() {
   const [resume, setResume] = useState<TailoredResume | null>(null);
   const [submittedInstructions, setSubmittedInstructions] = useState("");
   const [apiError, setApiError] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   function updateValue(field: keyof BuilderFormValues, value: string) {
     setValues((currentValues) => ({
@@ -91,6 +93,7 @@ export function BuilderForm() {
     const nextErrors = validateForm(values);
     setErrors(nextErrors);
     setApiError(null);
+    setExportError(null);
 
     if (Object.keys(nextErrors).length > 0) {
       setResume(null);
@@ -157,6 +160,45 @@ export function BuilderForm() {
       );
     } finally {
       setIsGenerating(false);
+    }
+  }
+
+  async function handleExportPdf() {
+    if (!resume) {
+      return;
+    }
+
+    setIsExporting(true);
+    setExportError(null);
+
+    try {
+      const response = await fetch("/api/resume/export-pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(resume),
+      });
+
+      if (!response.ok) {
+        setExportError("PDF export could not be completed. Please try again.");
+        return;
+      }
+
+      const pdfBlob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+      link.download = "targetresume-ai-resume.pdf";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch {
+      setExportError("PDF export could not be reached. Please try again.");
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -346,13 +388,30 @@ export function BuilderForm() {
             Resume Preview
           </h2>
           <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
-            Generated mock resume content will render here in a printable
-            layout.
+            Generated resume content will render here in a printable layout.
           </p>
         </div>
 
         {resume ? (
           <div className="mt-6 space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-medium text-[color:var(--muted)]">
+                Export the current preview without regenerating the resume.
+              </p>
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-[color:var(--primary)] bg-white px-4 text-sm font-semibold text-[color:var(--primary)] transition hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400"
+                disabled={isExporting}
+                onClick={handleExportPdf}
+                type="button"
+              >
+                {isExporting ? "Exporting..." : "Download PDF"}
+              </button>
+            </div>
+            {exportError ? (
+              <div className="border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+                {exportError}
+              </div>
+            ) : null}
             {submittedInstructions ? (
               <div className="border border-teal-200 bg-teal-50 px-4 py-3">
                 <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-teal-900">
@@ -368,8 +427,8 @@ export function BuilderForm() {
         ) : (
           <div className="mt-6 border border-dashed border-[color:var(--border)] bg-slate-50 px-4 py-8 text-center text-sm leading-6 text-[color:var(--muted)]">
             {isGenerating
-              ? "Generating the mock resume preview..."
-              : "Complete the required fields and submit to generate the mock resume preview."}
+              ? "Generating the resume preview..."
+              : "Complete the required fields and submit to generate the resume preview."}
           </div>
         )}
       </aside>

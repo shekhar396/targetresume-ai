@@ -38,7 +38,7 @@ See [docs/mvp-scope.md](docs/mvp-scope.md) for the full scope and exclusions.
 - OpenAI API
 - Playwright for server-side PDF generation
 
-PDF export is planned for v1.0 implementation, but is not implemented yet.
+PDF export is implemented with Playwright Chromium.
 
 ## Local Setup
 
@@ -46,6 +46,12 @@ Install dependencies:
 
 ```bash
 npm install
+```
+
+Install the Playwright browser used for PDF export:
+
+```bash
+npx playwright install chromium
 ```
 
 Create a local environment file:
@@ -77,6 +83,13 @@ Create a production build:
 ```bash
 npm run build
 ```
+
+Generate a PDF:
+
+1. Run the app with `npm run dev`.
+2. Open `/builder`.
+3. Generate a resume preview.
+4. Click `Download PDF`.
 
 ## Environment Variables
 
@@ -137,6 +150,8 @@ LinkedIn text -> target role/company -> AI tailored resume -> HTML preview -> PD
 
 The builder also accepts optional customization instructions, such as emphasizing a specific technology area, leadership experience, ATS screening, or one-page resume style. These instructions guide the AI only when they remain truthful to the provided profile and job context.
 
+After generation, the resume preview can be exported as a downloadable PDF. PDF export uses the already generated resume JSON and does not call OpenAI again.
+
 ## Documentation
 
 - [Vision](docs/vision.md)
@@ -147,4 +162,4 @@ The builder also accepts optional customization instructions, such as emphasizin
 
 ## Current Status
 
-Project documentation, the initial Next.js application shell, the builder form, and server-side OpenAI resume generation have been initialized. PDF export is intentionally not implemented yet.
+Project documentation, the Next.js application shell, the builder form, server-side OpenAI resume generation, HTML resume preview, and Playwright PDF export have been initialized.
