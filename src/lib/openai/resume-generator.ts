@@ -1,3 +1,5 @@
+import OpenAI from "openai";
+
 export type GenerateResumeInput = {
   profileText: string;
   targetCompany: string;
@@ -27,44 +29,211 @@ export type TailoredResume = {
   education: string[];
 };
 
+const DEFAULT_MODEL = "gpt-5.5";
+
+const resumeSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "candidateName",
+    "targetRole",
+    "professionalSummary",
+    "coreSkills",
+    "experience",
+    "projects",
+    "education",
+  ],
+  properties: {
+    candidateName: {
+      type: "string",
+      description:
+        "Candidate name from the profile text. Use 'Name not provided' when absent.",
+    },
+    targetRole: {
+      type: "string",
+      description: "The target position and target company.",
+    },
+    professionalSummary: {
+      type: "string",
+      description:
+        "A concise ATS-focused summary tailored to the target company and role.",
+    },
+    coreSkills: {
+      type: "array",
+      items: { type: "string" },
+      description: "A concise list of relevant skills supported by the input.",
+    },
+    experience: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["company", "role", "highlights"],
+        properties: {
+          company: { type: "string" },
+          role: { type: "string" },
+          highlights: {
+            type: "array",
+            items: { type: "string" },
+          },
+        },
+      },
+    },
+    projects: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["name", "description", "highlights"],
+        properties: {
+          name: { type: "string" },
+          description: { type: "string" },
+          highlights: {
+            type: "array",
+            items: { type: "string" },
+          },
+        },
+      },
+    },
+    education: {
+      type: "array",
+      items: { type: "string" },
+    },
+  },
+} as const;
+
 export async function generateTailoredResume(
   input: GenerateResumeInput,
 ): Promise<TailoredResume> {
-  const targetContext = `${input.targetPosition} at ${input.targetCompany}`;
+  const apiKey = process.env.OPENAI_API_KEY;
 
-  return {
-    candidateName: "Candidate Name",
-    targetRole: targetContext,
-    professionalSummary:
-      `Mock resume draft for a ${targetContext}. This placeholder will be replaced by OpenAI-generated content in a future milestone.`,
-    coreSkills: [
-      "Role-aligned communication",
-      "Problem solving",
-      "Cross-functional collaboration",
-      "Impact-focused execution",
-    ],
-    experience: [
-      {
-        company: "Previous Company",
-        role: "Relevant Professional Role",
-        highlights: [
-          "Translated profile context into role-relevant achievements.",
-          "Highlighted measurable impact and responsibilities aligned to the target position.",
-          "Prepared structured experience content for future AI generation.",
-        ],
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not configured.");
+  }
+
+  const client = new OpenAI({ apiKey });
+
+  try {
+    const response = await client.responses.create({
+      model: process.env.OPENAI_MODEL ?? DEFAULT_MODEL,
+      instructions: buildResumeInstructions(),
+      input: buildResumeInput(input),
+      max_output_tokens: 1800,
+      text: {
+        verbosity: "low",
+        format: {
+          type: "json_schema",
+          name: "tailored_resume",
+          strict: true,
+          schema: resumeSchema,
+        },
       },
-    ],
-    projects: [
-      {
-        name: "Targeted Resume Draft",
-        description:
-          "A placeholder project entry showing how generated project content will be structured.",
-        highlights: [
-          "Connects professional background to target company needs.",
-          "Keeps output predictable for HTML preview and PDF export.",
-        ],
-      },
-    ],
-    education: ["Education details will be inferred from provided profile text."],
-  };
+    });
+
+    return parseTailoredResume(response.output_text);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("OpenAI returned")) {
+      throw error;
+    }
+
+    throw new Error(
+      "Resume generation failed while communicating with OpenAI.",
+    );
+  }
+}
+
+function buildResumeInstructions() {
+  return [
+    "You are an expert resume strategist writing concise, ATS-friendly resumes.",
+    "Return only structured JSON that matches the provided schema.",
+    "Tailor the resume toward the target company and target position.",
+    "Use only facts supported by the supplied profile text and optional job description.",
+    "Do not invent employers, degrees, certifications, titles, dates, metrics, or projects.",
+    "If a detail is missing, use neutral wording such as 'Name not provided' or omit unsupported specificity.",
+    "Keep the content concise enough for a one-page resume preview.",
+    "Use strong professional language, but keep claims truthful and grounded.",
+  ].join(" ");
+}
+
+function buildResumeInput(input: GenerateResumeInput) {
+  return [
+    `Target company: ${input.targetCompany}`,
+    `Target position: ${input.targetPosition}`,
+    "",
+    "Profile text:",
+    input.profileText,
+    "",
+    "Optional job description:",
+    input.jobDescription || "Not provided.",
+  ].join("\n");
+}
+
+function parseTailoredResume(rawText: string): TailoredResume {
+  if (!rawText.trim()) {
+    throw new Error("OpenAI returned an empty resume response.");
+  }
+
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    throw new Error("OpenAI returned invalid JSON for the resume response.");
+  }
+
+  if (!isTailoredResume(parsed)) {
+    throw new Error("OpenAI returned a resume response with an invalid shape.");
+  }
+
+  return parsed;
+}
+
+function isTailoredResume(value: unknown): value is TailoredResume {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.candidateName === "string" &&
+    typeof value.targetRole === "string" &&
+    typeof value.professionalSummary === "string" &&
+    isStringArray(value.coreSkills) &&
+    isExperienceArray(value.experience) &&
+    isProjectArray(value.projects) &&
+    isStringArray(value.education)
+  );
+}
+
+function isExperienceArray(value: unknown): value is ResumeExperienceItem[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        isRecord(item) &&
+        typeof item.company === "string" &&
+        typeof item.role === "string" &&
+        isStringArray(item.highlights),
+    )
+  );
+}
+
+function isProjectArray(value: unknown): value is ResumeProjectItem[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        isRecord(item) &&
+        typeof item.name === "string" &&
+        typeof item.description === "string" &&
+        isStringArray(item.highlights),
+    )
+  );
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

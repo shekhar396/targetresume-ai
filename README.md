@@ -37,7 +37,7 @@ See [docs/mvp-scope.md](docs/mvp-scope.md) for the full scope and exclusions.
 - OpenAI API
 - Playwright for server-side PDF generation
 
-OpenAI and PDF export are planned for v1.0 implementation, but are not implemented in the initial app shell.
+PDF export is planned for v1.0 implementation, but is not implemented yet.
 
 ## Local Setup
 
@@ -51,6 +51,12 @@ Create a local environment file:
 
 ```bash
 cp .env.example .env.local
+```
+
+Add your OpenAI API key to `.env.local`:
+
+```env
+OPENAI_API_KEY=your_openai_api_key_here
 ```
 
 Run the development server:
@@ -76,8 +82,10 @@ npm run build
 The application will require:
 
 ```env
-OPENAI_API_KEY=
+OPENAI_API_KEY=your_openai_api_key_here
 ```
+
+`OPENAI_API_KEY` is read only by server-side API code. Do not prefix it with `NEXT_PUBLIC_`, and do not expose it to browser code.
 
 Future production deployments may add variables for authentication, persistence, analytics, billing, and observability, but those are intentionally outside v1.0.
 
@@ -136,4 +144,4 @@ LinkedIn text -> target role/company -> AI tailored resume -> HTML preview -> PD
 
 ## Current Status
 
-Project documentation and the initial Next.js application shell have been initialized. OpenAI resume generation and PDF export are intentionally not implemented yet.
+Project documentation, the initial Next.js application shell, the builder form, and server-side OpenAI resume generation have been initialized. PDF export is intentionally not implemented yet.

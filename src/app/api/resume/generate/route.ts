@@ -42,12 +42,27 @@ export async function POST(request: Request) {
     );
   }
 
-  const resume = await generateTailoredResume(validationResult.input);
+  try {
+    const resume = await generateTailoredResume(validationResult.input);
 
-  return NextResponse.json({
-    success: true,
-    resume,
-  });
+    return NextResponse.json({
+      success: true,
+      resume,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Resume generation failed unexpectedly.";
+
+    return NextResponse.json(
+      {
+        success: false,
+        message,
+      },
+      { status: 500 },
+    );
+  }
 }
 
 function validateGenerateResumeInput(
