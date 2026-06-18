@@ -1,6 +1,11 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { ResumePreview } from "@/components/resume/ResumePreview";
+import type {
+  GenerateResumeInput,
+  TailoredResume,
+} from "@/lib/openai/resume-generator";
 
 type BuilderFormValues = {
   profileText: string;
@@ -13,6 +18,23 @@ type BuilderFormErrors = Partial<
   Record<"profileText" | "targetCompany" | "targetPosition", string>
 >;
 
+type GenerateResumeSuccessResponse = {
+  success: true;
+  resume: TailoredResume;
+};
+
+type GenerateResumeErrorResponse = {
+  success: false;
+  errors?: BuilderFormErrors & {
+    request?: string;
+  };
+  message?: string;
+};
+
+type GenerateResumeResponse =
+  | GenerateResumeSuccessResponse
+  | GenerateResumeErrorResponse;
+
 const initialValues: BuilderFormValues = {
   profileText: "",
   targetCompany: "",
@@ -23,8 +45,9 @@ const initialValues: BuilderFormValues = {
 export function BuilderForm() {
   const [values, setValues] = useState<BuilderFormValues>(initialValues);
   const [errors, setErrors] = useState<BuilderFormErrors>({});
-  const [submittedValues, setSubmittedValues] =
-    useState<BuilderFormValues | null>(null);
+  const [resume, setResume] = useState<TailoredResume | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   function updateValue(field: keyof BuilderFormValues, value: string) {
     setValues((currentValues) => ({
@@ -59,23 +82,72 @@ export function BuilderForm() {
     return nextErrors;
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const nextErrors = validateForm(values);
     setErrors(nextErrors);
+    setApiError(null);
 
     if (Object.keys(nextErrors).length > 0) {
-      setSubmittedValues(null);
+      setResume(null);
       return;
     }
 
-    setSubmittedValues({
+    const requestBody: GenerateResumeInput = {
       profileText: values.profileText.trim(),
       targetCompany: values.targetCompany.trim(),
       targetPosition: values.targetPosition.trim(),
-      jobDescription: values.jobDescription.trim(),
-    });
+    };
+
+    const jobDescription = values.jobDescription.trim();
+
+    if (jobDescription) {
+      requestBody.jobDescription = jobDescription;
+    }
+
+    setIsGenerating(true);
+    setResume(null);
+
+    try {
+      const response = await fetch("/api/resume/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const result = (await response.json()) as GenerateResumeResponse;
+
+      if (!result.success) {
+        const fieldErrors = result.errors ?? {};
+        const { request, ...formErrors } = fieldErrors;
+
+        setErrors(formErrors);
+        setApiError(
+          request ??
+            result.message ??
+            "Resume generation could not be completed. Please review the form and try again.",
+        );
+        return;
+      }
+
+      if (!response.ok) {
+        setApiError(
+          "Resume generation could not be completed. Please try again.",
+        );
+        return;
+      }
+
+      setResume(result.resume);
+    } catch {
+      setApiError(
+        "Resume generation could not be reached. Please try again in a moment.",
+      );
+    } finally {
+      setIsGenerating(false);
+    }
   }
 
   return (
@@ -215,63 +287,47 @@ export function BuilderForm() {
 
         <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[color:var(--border)] pt-5">
           <button
-            className="inline-flex min-h-12 items-center justify-center rounded-md bg-[color:var(--primary)] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[color:var(--primary-dark)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)] focus:ring-offset-2"
+            className="inline-flex min-h-12 items-center justify-center rounded-md bg-[color:var(--primary)] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[color:var(--primary-dark)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-400"
+            disabled={isGenerating}
             type="submit"
           >
-            Generate Preview Summary
+            {isGenerating ? "Generating..." : "Generate Resume Preview"}
           </button>
           <p className="text-sm text-[color:var(--muted)]">
-            No AI request will be made in this milestone.
+            Uses the mock API route in this milestone.
           </p>
         </div>
+
+        {apiError ? (
+          <div className="mt-5 border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+            {apiError}
+          </div>
+        ) : null}
       </form>
 
       <aside className="border border-[color:var(--border)] bg-[color:var(--panel)] p-5 shadow-sm sm:p-6">
         <div className="border-b border-[color:var(--border)] pb-5">
           <h2 className="text-xl font-semibold text-[color:var(--foreground)]">
-            Preview Summary
+            Resume Preview
           </h2>
           <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
-            Submitted values will appear here before AI generation is wired in.
+            Generated mock resume content will render here in a printable
+            layout.
           </p>
         </div>
 
-        {submittedValues ? (
-          <div className="mt-6 space-y-5">
-            <div className="border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-900">
-              AI generation will be connected in the next milestone.
-            </div>
-            <SummaryItem label="Target company" value={submittedValues.targetCompany} />
-            <SummaryItem label="Target position" value={submittedValues.targetPosition} />
-            <SummaryItem
-              label="Profile text"
-              value={submittedValues.profileText}
-            />
-            <SummaryItem
-              label="Job description"
-              value={submittedValues.jobDescription || "Not provided"}
-            />
+        {resume ? (
+          <div className="mt-6">
+            <ResumePreview resume={resume} />
           </div>
         ) : (
           <div className="mt-6 border border-dashed border-[color:var(--border)] bg-slate-50 px-4 py-8 text-center text-sm leading-6 text-[color:var(--muted)]">
-            Complete the required fields and submit to preview the current
-            resume-building inputs.
+            {isGenerating
+              ? "Generating the mock resume preview..."
+              : "Complete the required fields and submit to generate the mock resume preview."}
           </div>
         )}
       </aside>
-    </div>
-  );
-}
-
-function SummaryItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--muted)]">
-        {label}
-      </h3>
-      <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[color:var(--foreground)]">
-        {value}
-      </p>
     </div>
   );
 }
