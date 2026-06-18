@@ -16,7 +16,7 @@ type BuilderFormValues = {
 };
 
 type BuilderFormErrors = Partial<
-  Record<"profileText" | "targetCompany" | "targetPosition", string>
+  Record<"profileText" | "targetCompany" | "targetPosition" | "currentResume", string>
 >;
 
 type GenerateResumeSuccessResponse = {
@@ -53,6 +53,9 @@ export function BuilderForm() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [generationAction, setGenerationAction] = useState<
+    "generating" | "updating"
+  >("generating");
 
   function updateValue(field: keyof BuilderFormValues, value: string) {
     setValues((currentValues) => ({
@@ -100,6 +103,7 @@ export function BuilderForm() {
       return;
     }
 
+    const existingResume = resume;
     const requestBody: GenerateResumeInput = {
       profileText: values.profileText.trim(),
       targetCompany: values.targetCompany.trim(),
@@ -113,10 +117,13 @@ export function BuilderForm() {
       requestBody.jobDescription = jobDescription;
     }
 
-    if (additionalInstructions) {
-      requestBody.additionalInstructions = additionalInstructions;
+    requestBody.additionalInstructions = additionalInstructions;
+
+    if (existingResume) {
+      requestBody.currentResume = existingResume;
     }
 
+    setGenerationAction(existingResume ? "updating" : "generating");
     setIsGenerating(true);
     setResume(null);
     setSubmittedInstructions("");
@@ -368,7 +375,13 @@ export function BuilderForm() {
             disabled={isGenerating}
             type="submit"
           >
-            {isGenerating ? "Generating..." : "Generate Resume Preview"}
+            {isGenerating
+              ? generationAction === "updating"
+                ? "Updating resume..."
+                : "Generating resume..."
+              : resume
+                ? "Update Resume Preview"
+                : "Generate Resume Preview"}
           </button>
           <p className="text-sm text-[color:var(--muted)]">
             Generates a structured resume with server-side AI.
@@ -427,7 +440,9 @@ export function BuilderForm() {
         ) : (
           <div className="mt-6 border border-dashed border-[color:var(--border)] bg-slate-50 px-4 py-8 text-center text-sm leading-6 text-[color:var(--muted)]">
             {isGenerating
-              ? "Generating the resume preview..."
+              ? generationAction === "updating"
+                ? "Updating the resume preview..."
+                : "Generating the resume preview..."
               : "Complete the required fields and submit to generate the resume preview."}
           </div>
         )}

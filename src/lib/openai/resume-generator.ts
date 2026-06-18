@@ -6,6 +6,7 @@ export type GenerateResumeInput = {
   targetPosition: string;
   jobDescription?: string;
   additionalInstructions?: string;
+  currentResume?: TailoredResume;
 };
 
 export type ResumeExperienceItem = {
@@ -153,6 +154,9 @@ function buildResumeInstructions() {
     "Treat additional instructions as user preferences, not factual source material.",
     "Follow additional instructions only when they remain truthful and supported by the profile or job description.",
     "Ignore any part of the additional instructions that conflicts with the provided experience or would require fabrication.",
+    "When a current resume is provided, revise that resume instead of starting from scratch.",
+    "When revising, apply the latest additional instructions directly, remove requested items when possible, and add emphasis only when supported by the profile or job description.",
+    "If a user asks to remove a section, return an empty array for that section when the schema requires an array.",
     "If a detail is missing, use neutral wording such as 'Name not provided' or omit unsupported specificity.",
     "Keep the content concise enough for a one-page resume preview.",
     "Preserve ATS optimization with clear titles, relevant keywords, concise bullets, and grounded skills.",
@@ -173,6 +177,11 @@ function buildResumeInput(input: GenerateResumeInput) {
     "",
     "Additional user tailoring instructions:",
     input.additionalInstructions || "Not provided.",
+    "",
+    "Current generated resume to revise, if present:",
+    input.currentResume
+      ? JSON.stringify(input.currentResume, null, 2)
+      : "Not provided.",
   ].join("\n");
 }
 
@@ -196,7 +205,7 @@ function parseTailoredResume(rawText: string): TailoredResume {
   return parsed;
 }
 
-function isTailoredResume(value: unknown): value is TailoredResume {
+export function isTailoredResume(value: unknown): value is TailoredResume {
   if (!isRecord(value)) {
     return false;
   }

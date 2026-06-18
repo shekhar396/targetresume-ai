@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   generateTailoredResume,
+  isTailoredResume,
   type GenerateResumeInput,
 } from "@/lib/openai/resume-generator";
 
@@ -12,6 +13,7 @@ type RawGenerateResumeRequest = {
   targetPosition?: unknown;
   jobDescription?: unknown;
   additionalInstructions?: unknown;
+  currentResume?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -95,8 +97,19 @@ function validateGenerateResumeInput(
     input.jobDescription = jobDescription;
   }
 
-  if (additionalInstructions) {
-    input.additionalInstructions = additionalInstructions;
+  input.additionalInstructions = additionalInstructions;
+
+  if (payload.currentResume !== undefined) {
+    if (!isTailoredResume(payload.currentResume)) {
+      return {
+        success: false,
+        errors: {
+          currentResume: "Current resume must match the generated resume shape.",
+        },
+      };
+    }
+
+    input.currentResume = payload.currentResume;
   }
 
   const errors: ValidationErrors = {};

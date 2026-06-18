@@ -12,8 +12,8 @@ export function renderResumeHtml(resume: TailoredResume) {
     <title>${escapeHtml(resume.candidateName)} Resume</title>
     <style>
       @page {
-        size: Letter;
-        margin: 0.55in;
+        size: A4;
+        margin: 14mm;
       }
 
       * {
@@ -21,17 +21,24 @@ export function renderResumeHtml(resume: TailoredResume) {
       }
 
       body {
-        margin: 0;
+        background: #ffffff;
         color: #172033;
         font-family: Arial, Helvetica, sans-serif;
-        font-size: 10.5pt;
-        line-height: 1.45;
+        font-size: 10pt;
+        line-height: 1.5;
+        margin: 0;
+      }
+
+      .resume {
+        background: #ffffff;
+        border: 1px solid #d9e1ec;
+        padding: 28px 32px;
       }
 
       header {
-        border-bottom: 1px solid #9aa8ba;
-        padding-bottom: 12px;
-        margin-bottom: 18px;
+        border-bottom: 1px solid #cbd5e1;
+        margin-bottom: 24px;
+        padding-bottom: 20px;
       }
 
       h1,
@@ -43,45 +50,57 @@ export function renderResumeHtml(resume: TailoredResume) {
 
       h1 {
         color: #111827;
-        font-size: 24pt;
+        font-size: 26pt;
+        font-weight: 700;
         line-height: 1.1;
       }
 
       .target-role {
         color: #0f766e;
-        font-size: 11.5pt;
-        font-weight: 700;
-        margin-top: 5px;
+        font-size: 12pt;
+        font-weight: 600;
+        margin-top: 8px;
+      }
+
+      .sections {
+        display: grid;
+        gap: 24px;
       }
 
       section {
-        margin-top: 16px;
         break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      section,
+      .entry {
+        break-inside: avoid;
+        page-break-inside: avoid;
       }
 
       h2 {
-        border-bottom: 1px solid #d5dce6;
+        border-bottom: 1px solid #e2e8f0;
         color: #111827;
-        font-size: 9.5pt;
-        letter-spacing: 0.08em;
-        margin-bottom: 8px;
-        padding-bottom: 4px;
+        font-size: 10pt;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
         text-transform: uppercase;
       }
 
       h3 {
         color: #111827;
-        font-size: 10.75pt;
+        font-size: 11pt;
         font-weight: 700;
       }
 
-      .muted {
-        color: #526071;
-        font-weight: 700;
+      p {
+        color: #334155;
       }
 
       .entry {
-        margin-top: 10px;
+        margin-top: 20px;
       }
 
       .entry:first-child {
@@ -95,62 +114,111 @@ export function renderResumeHtml(resume: TailoredResume) {
         justify-content: space-between;
       }
 
+      .muted {
+        color: #475569;
+        font-size: 10pt;
+        font-weight: 600;
+      }
+
       ul {
-        margin: 6px 0 0;
-        padding-left: 17px;
+        margin: 12px 0 0;
+        padding-left: 18px;
       }
 
       li {
-        margin-top: 3px;
+        color: #334155;
+        margin-top: 7px;
       }
 
       .skills {
         display: grid;
-        gap: 5px 12px;
+        gap: 8px;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         list-style: none;
+        margin-top: 0;
         padding-left: 0;
       }
 
       .skills li {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #334155;
+        font-weight: 600;
         margin-top: 0;
+        padding: 8px 10px;
       }
     </style>
   </head>
   <body>
-    <header>
-      <h1>${escapeHtml(resume.candidateName)}</h1>
-      <p class="target-role">${escapeHtml(resume.targetRole)}</p>
-    </header>
+    <article class="resume">
+      <header>
+        <h1>${escapeHtml(resume.candidateName)}</h1>
+        <p class="target-role">${escapeHtml(resume.targetRole)}</p>
+      </header>
 
-    <section>
-      <h2>Professional Summary</h2>
-      <p>${escapeHtml(resume.professionalSummary)}</p>
-    </section>
+      <div class="sections">
+        <section>
+          <h2>Professional Summary</h2>
+          <p>${escapeHtml(resume.professionalSummary)}</p>
+        </section>
 
-    <section>
-      <h2>Core Skills</h2>
-      <ul class="skills">
-        ${resume.coreSkills.map((skill) => `<li>${escapeHtml(skill)}</li>`).join("")}
-      </ul>
-    </section>
+        ${renderSkillsSection(resume.coreSkills)}
 
-    <section>
-      <h2>Experience</h2>
-      ${resume.experience.map(renderExperienceItem).join("")}
-    </section>
+        ${renderExperienceSection(resume.experience)}
 
-    <section>
-      <h2>Projects</h2>
-      ${resume.projects.map(renderProjectItem).join("")}
-    </section>
+        ${renderProjectsSection(resume.projects)}
 
-    <section>
-      <h2>Education</h2>
-      ${renderBulletList(resume.education)}
-    </section>
+        ${renderEducationSection(resume.education)}
+      </div>
+    </article>
   </body>
 </html>`;
+}
+
+function renderSkillsSection(skills: string[]) {
+  if (skills.length === 0) {
+    return "";
+  }
+
+  return `<section>
+    <h2>Core Skills</h2>
+    <ul class="skills">
+      ${skills.map((skill) => `<li>${escapeHtml(skill)}</li>`).join("")}
+    </ul>
+  </section>`;
+}
+
+function renderExperienceSection(items: ResumeExperienceItem[]) {
+  if (items.length === 0) {
+    return "";
+  }
+
+  return `<section>
+    <h2>Experience</h2>
+    ${items.map(renderExperienceItem).join("")}
+  </section>`;
+}
+
+function renderProjectsSection(items: ResumeProjectItem[]) {
+  if (items.length === 0) {
+    return "";
+  }
+
+  return `<section>
+    <h2>Projects</h2>
+    ${items.map(renderProjectItem).join("")}
+  </section>`;
+}
+
+function renderEducationSection(items: string[]) {
+  if (items.length === 0) {
+    return "";
+  }
+
+  return `<section>
+    <h2>Education</h2>
+    ${renderBulletList(items)}
+  </section>`;
 }
 
 function renderExperienceItem(item: ResumeExperienceItem) {

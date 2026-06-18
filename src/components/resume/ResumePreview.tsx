@@ -23,56 +23,64 @@ export function ResumePreview({ resume }: ResumePreviewProps) {
           </p>
         </ResumeSection>
 
-        <ResumeSection title="Core Skills">
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {resume.coreSkills.map((skill) => (
-              <li
-                className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700"
-                key={skill}
-              >
-                {skill}
-              </li>
-            ))}
-          </ul>
-        </ResumeSection>
+        {resume.coreSkills.length > 0 ? (
+          <ResumeSection title="Core Skills">
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {resume.coreSkills.map((skill) => (
+                <li
+                  className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700"
+                  key={skill}
+                >
+                  {skill}
+                </li>
+              ))}
+            </ul>
+          </ResumeSection>
+        ) : null}
 
-        <ResumeSection title="Experience">
-          <div className="space-y-5">
-            {resume.experience.map((item) => (
-              <div key={`${item.company}-${item.role}`}>
-                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <h4 className="text-base font-semibold text-slate-900">
-                    {item.role}
-                  </h4>
-                  <p className="text-sm font-medium text-slate-600">
-                    {item.company}
-                  </p>
+        {resume.experience.length > 0 ? (
+          <ResumeSection title="Experience">
+            <div className="space-y-5">
+              {resume.experience.map((item) => (
+                <div className="break-inside-avoid" key={`${item.company}-${item.role}`}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <h4 className="text-base font-semibold text-slate-900">
+                      {item.role}
+                    </h4>
+                    <p className="text-sm font-medium text-slate-600">
+                      {item.company}
+                    </p>
+                  </div>
+                  <BulletList items={item.highlights} />
                 </div>
-                <BulletList items={item.highlights} />
-              </div>
-            ))}
-          </div>
-        </ResumeSection>
+              ))}
+            </div>
+          </ResumeSection>
+        ) : null}
 
-        <ResumeSection title="Projects">
-          <div className="space-y-5">
-            {resume.projects.map((project) => (
-              <div key={project.name}>
-                <h4 className="text-base font-semibold text-slate-900">
-                  {project.name}
-                </h4>
-                <p className="mt-1 text-sm leading-6 text-slate-700">
-                  {project.description}
-                </p>
-                <BulletList items={project.highlights} />
-              </div>
-            ))}
-          </div>
-        </ResumeSection>
+        {resume.projects.length > 0 ? (
+          <ResumeSection title="Projects">
+            <div className="space-y-5">
+              {resume.projects.map((project) => (
+                <div className="break-inside-avoid" key={project.name}>
+                  <h4 className="text-base font-semibold text-slate-900">
+                    {project.name}
+                  </h4>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    {project.description}
+                  </p>
+                  <BulletList items={project.highlights} />
+                </div>
+              ))}
+            </div>
+          </ResumeSection>
+        ) : null}
 
-        <ResumeSection title="Education">
-          <BulletList items={resume.education} />
-        </ResumeSection>
+        {resume.education.length > 0 ? (
+          <ResumeSection title="Education">
+            <BulletList items={resume.education} />
+          </ResumeSection>
+        ) : null}
       </div>
     </article>
   );
