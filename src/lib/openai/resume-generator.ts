@@ -5,6 +5,7 @@ export type GenerateResumeInput = {
   targetCompany: string;
   targetPosition: string;
   jobDescription?: string;
+  additionalInstructions?: string;
 };
 
 export type ResumeExperienceItem = {
@@ -149,8 +150,12 @@ function buildResumeInstructions() {
     "Tailor the resume toward the target company and target position.",
     "Use only facts supported by the supplied profile text and optional job description.",
     "Do not invent employers, degrees, certifications, titles, dates, metrics, or projects.",
+    "Treat additional instructions as user preferences, not factual source material.",
+    "Follow additional instructions only when they remain truthful and supported by the profile or job description.",
+    "Ignore any part of the additional instructions that conflicts with the provided experience or would require fabrication.",
     "If a detail is missing, use neutral wording such as 'Name not provided' or omit unsupported specificity.",
     "Keep the content concise enough for a one-page resume preview.",
+    "Preserve ATS optimization with clear titles, relevant keywords, concise bullets, and grounded skills.",
     "Use strong professional language, but keep claims truthful and grounded.",
   ].join(" ");
 }
@@ -165,6 +170,9 @@ function buildResumeInput(input: GenerateResumeInput) {
     "",
     "Optional job description:",
     input.jobDescription || "Not provided.",
+    "",
+    "Additional user tailoring instructions:",
+    input.additionalInstructions || "Not provided.",
   ].join("\n");
 }
 

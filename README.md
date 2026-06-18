@@ -19,6 +19,7 @@ The initial version will support:
 - Target company input.
 - Target position input.
 - Optional job description input.
+- Optional additional instructions for user-directed tailoring.
 - AI-powered profile analysis and resume generation.
 - Structured resume output rendered as an HTML preview.
 - PDF export through Playwright.
@@ -133,6 +134,8 @@ The landing page introduces TargetResume AI and the v1.0 workflow:
 ```text
 LinkedIn text -> target role/company -> AI tailored resume -> HTML preview -> PDF export
 ```
+
+The builder also accepts optional customization instructions, such as emphasizing a specific technology area, leadership experience, ATS screening, or one-page resume style. These instructions guide the AI only when they remain truthful to the provided profile and job context.
 
 ## Documentation
 

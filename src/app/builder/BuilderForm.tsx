@@ -12,6 +12,7 @@ type BuilderFormValues = {
   targetCompany: string;
   targetPosition: string;
   jobDescription: string;
+  additionalInstructions: string;
 };
 
 type BuilderFormErrors = Partial<
@@ -40,12 +41,14 @@ const initialValues: BuilderFormValues = {
   targetCompany: "",
   targetPosition: "",
   jobDescription: "",
+  additionalInstructions: "",
 };
 
 export function BuilderForm() {
   const [values, setValues] = useState<BuilderFormValues>(initialValues);
   const [errors, setErrors] = useState<BuilderFormErrors>({});
   const [resume, setResume] = useState<TailoredResume | null>(null);
+  const [submittedInstructions, setSubmittedInstructions] = useState("");
   const [apiError, setApiError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -101,13 +104,19 @@ export function BuilderForm() {
     };
 
     const jobDescription = values.jobDescription.trim();
+    const additionalInstructions = values.additionalInstructions.trim();
 
     if (jobDescription) {
       requestBody.jobDescription = jobDescription;
     }
 
+    if (additionalInstructions) {
+      requestBody.additionalInstructions = additionalInstructions;
+    }
+
     setIsGenerating(true);
     setResume(null);
+    setSubmittedInstructions("");
 
     try {
       const response = await fetch("/api/resume/generate", {
@@ -140,6 +149,7 @@ export function BuilderForm() {
         return;
       }
 
+      setSubmittedInstructions(additionalInstructions);
       setResume(result.resume);
     } catch {
       setApiError(
@@ -283,6 +293,31 @@ export function BuilderForm() {
               value={values.jobDescription}
             />
           </div>
+
+          <div>
+            <label
+              className="block text-sm font-semibold text-[color:var(--foreground)]"
+              htmlFor="additionalInstructions"
+            >
+              Additional Instructions (Optional)
+            </label>
+            <textarea
+              className="mt-2 min-h-32 w-full resize-y border border-[color:var(--border)] bg-white px-3 py-3 text-sm leading-6 text-[color:var(--foreground)] outline-none transition placeholder:text-slate-400 focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary)]/20"
+              id="additionalInstructions"
+              name="additionalInstructions"
+              onChange={(event) =>
+                updateValue("additionalInstructions", event.target.value)
+              }
+              placeholder={[
+                "Emphasize Kubernetes and Terraform experience",
+                "Focus on leadership and team management",
+                "Keep the resume to one page",
+                "Highlight fintech experience",
+                "Optimize for ATS screening",
+              ].join("\n")}
+              value={values.additionalInstructions}
+            />
+          </div>
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[color:var(--border)] pt-5">
@@ -294,7 +329,7 @@ export function BuilderForm() {
             {isGenerating ? "Generating..." : "Generate Resume Preview"}
           </button>
           <p className="text-sm text-[color:var(--muted)]">
-            Uses the mock API route in this milestone.
+            Generates a structured resume with server-side AI.
           </p>
         </div>
 
@@ -317,7 +352,17 @@ export function BuilderForm() {
         </div>
 
         {resume ? (
-          <div className="mt-6">
+          <div className="mt-6 space-y-5">
+            {submittedInstructions ? (
+              <div className="border border-teal-200 bg-teal-50 px-4 py-3">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-teal-900">
+                  Applied customization
+                </h3>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-teal-900">
+                  {submittedInstructions}
+                </p>
+              </div>
+            ) : null}
             <ResumePreview resume={resume} />
           </div>
         ) : (

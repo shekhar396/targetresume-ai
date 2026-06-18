@@ -11,6 +11,7 @@ type RawGenerateResumeRequest = {
   targetCompany?: unknown;
   targetPosition?: unknown;
   jobDescription?: unknown;
+  additionalInstructions?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -85,8 +86,18 @@ function validateGenerateResumeInput(
     profileText: normalizeText(payload.profileText),
     targetCompany: normalizeText(payload.targetCompany),
     targetPosition: normalizeText(payload.targetPosition),
-    jobDescription: normalizeText(payload.jobDescription),
   };
+
+  const jobDescription = normalizeText(payload.jobDescription);
+  const additionalInstructions = normalizeText(payload.additionalInstructions);
+
+  if (jobDescription) {
+    input.jobDescription = jobDescription;
+  }
+
+  if (additionalInstructions) {
+    input.additionalInstructions = additionalInstructions;
+  }
 
   const errors: ValidationErrors = {};
 
