@@ -1,10 +1,29 @@
 import type {
-  ResumeExperienceItem,
-  ResumeProjectItem,
-  TailoredResume,
-} from "@/lib/openai/resume-generator";
+  Resume,
+  ResumeContact,
+  ResumeExperience,
+  ResumeProject,
+} from "@/types/resume";
 
-export function renderResumeHtml(resume: TailoredResume) {
+const safeAccentColors: Record<string, string> = {
+  blue: "#2563eb",
+  emerald: "#059669",
+  green: "#059669",
+  gray: "#475569",
+  grey: "#475569",
+  indigo: "#4f46e5",
+  minimal: "#334155",
+  navy: "#1d4ed8",
+  purple: "#7c3aed",
+  red: "#dc2626",
+  slate: "#334155",
+  teal: "#0f766e",
+};
+
+export function renderResumeHtml(resume: Resume) {
+  const accentColor = resolveAccentColor(resume.presentation.accentColor);
+  const toneClass = resume.presentation.styleTone ?? "modern";
+
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -29,16 +48,32 @@ export function renderResumeHtml(resume: TailoredResume) {
         margin: 0;
       }
 
+      a {
+        color: ${accentColor};
+        text-decoration: none;
+      }
+
       .resume {
         background: #ffffff;
-        border: 1px solid #d9e1ec;
-        padding: 28px 32px;
+        border: ${toneClass === "minimal" ? "0" : "1px solid #d9e1ec"};
+        padding: ${toneClass === "minimal" ? "18px 10px" : "28px 32px"};
       }
 
       header {
-        border-bottom: 1px solid #cbd5e1;
+        border-bottom: 1px solid ${accentColor}55;
         margin-bottom: 24px;
         padding-bottom: 20px;
+      }
+
+      .header-top-right {
+        align-items: flex-start;
+        display: flex;
+        gap: 20px;
+        justify-content: space-between;
+      }
+
+      .header-centered {
+        text-align: center;
       }
 
       h1,
@@ -50,26 +85,41 @@ export function renderResumeHtml(resume: TailoredResume) {
 
       h1 {
         color: #111827;
-        font-size: 26pt;
+        font-size: ${toneClass === "classic" ? "24pt" : "26pt"};
         font-weight: 700;
         line-height: 1.1;
       }
 
       .target-role {
-        color: #0f766e;
+        color: ${accentColor};
         font-size: 12pt;
         font-weight: 600;
         margin-top: 8px;
       }
 
+      .contact {
+        color: #475569;
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 9.5pt;
+        gap: 5px 12px;
+        margin-top: 14px;
+      }
+
+      .header-top-right .contact {
+        justify-content: flex-end;
+        margin-top: 0;
+        max-width: 260px;
+        text-align: right;
+      }
+
+      .header-centered .contact {
+        justify-content: center;
+      }
+
       .sections {
         display: grid;
         gap: 24px;
-      }
-
-      section {
-        break-inside: avoid;
-        page-break-inside: avoid;
       }
 
       section,
@@ -79,7 +129,7 @@ export function renderResumeHtml(resume: TailoredResume) {
       }
 
       h2 {
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid ${accentColor}40;
         color: #111827;
         font-size: 10pt;
         font-weight: 700;
@@ -151,10 +201,7 @@ export function renderResumeHtml(resume: TailoredResume) {
   </head>
   <body>
     <article class="resume">
-      <header>
-        <h1>${escapeHtml(resume.candidateName)}</h1>
-        <p class="target-role">${escapeHtml(resume.targetRole)}</p>
-      </header>
+      ${renderHeader(resume, accentColor)}
 
       <div class="sections">
         <section>
@@ -175,6 +222,51 @@ export function renderResumeHtml(resume: TailoredResume) {
 </html>`;
 }
 
+function renderHeader(resume: Resume, accentColor: string) {
+  const layout = resume.presentation.headerLayout;
+  const contact = renderContact(resume.contact);
+
+  if (layout === "centered") {
+    return `<header class="header-centered">
+      <h1>${escapeHtml(resume.candidateName)}</h1>
+      <p class="target-role">${escapeHtml(resume.targetRole)}</p>
+      ${contact}
+    </header>`;
+  }
+
+  if (layout === "under-name") {
+    return `<header>
+      <h1>${escapeHtml(resume.candidateName)}</h1>
+      <p class="target-role">${escapeHtml(resume.targetRole)}</p>
+      ${contact}
+    </header>`;
+  }
+
+  return `<header class="header-top-right">
+    <div>
+      <h1>${escapeHtml(resume.candidateName)}</h1>
+      <p class="target-role">${escapeHtml(resume.targetRole)}</p>
+    </div>
+    ${contact || `<span style="color:${accentColor}"></span>`}
+  </header>`;
+}
+
+function renderContact(contact: ResumeContact) {
+  const items = getContactItems(contact);
+
+  if (items.length === 0) {
+    return "";
+  }
+
+  return `<div class="contact">${items
+    .map((item) =>
+      item.href
+        ? `<a href="${escapeHtml(item.href)}">${escapeHtml(item.label)}</a>`
+        : `<span>${escapeHtml(item.label)}</span>`,
+    )
+    .join("")}</div>`;
+}
+
 function renderSkillsSection(skills: string[]) {
   if (skills.length === 0) {
     return "";
@@ -188,7 +280,7 @@ function renderSkillsSection(skills: string[]) {
   </section>`;
 }
 
-function renderExperienceSection(items: ResumeExperienceItem[]) {
+function renderExperienceSection(items: ResumeExperience[]) {
   if (items.length === 0) {
     return "";
   }
@@ -199,7 +291,7 @@ function renderExperienceSection(items: ResumeExperienceItem[]) {
   </section>`;
 }
 
-function renderProjectsSection(items: ResumeProjectItem[]) {
+function renderProjectsSection(items: ResumeProject[]) {
   if (items.length === 0) {
     return "";
   }
@@ -210,37 +302,83 @@ function renderProjectsSection(items: ResumeProjectItem[]) {
   </section>`;
 }
 
-function renderEducationSection(items: string[]) {
+function renderEducationSection(items: Resume["education"]) {
   if (items.length === 0) {
     return "";
   }
 
   return `<section>
     <h2>Education</h2>
-    ${renderBulletList(items)}
+    ${items
+      .map(
+        (item) => `<div class="entry">
+          <div class="entry-heading">
+            <h3>${escapeHtml(item.degree)}${item.field ? `, ${escapeHtml(item.field)}` : ""}</h3>
+            <p class="muted">${escapeHtml(
+              [item.startDate, item.endDate].filter(Boolean).join(" - "),
+            )}</p>
+          </div>
+          <p>${escapeHtml(item.institution)}</p>
+          ${item.details?.length ? renderBulletList(item.details) : ""}
+        </div>`,
+      )
+      .join("")}
   </section>`;
 }
 
-function renderExperienceItem(item: ResumeExperienceItem) {
+function renderExperienceItem(item: ResumeExperience) {
   return `<div class="entry">
     <div class="entry-heading">
-      <h3>${escapeHtml(item.role)}</h3>
-      <p class="muted">${escapeHtml(item.company)}</p>
+      <h3>${escapeHtml(item.title)} <span style="font-weight:400;color:#64748b">|</span> ${escapeHtml(item.company)}</h3>
+      <p class="muted">${escapeHtml(item.startDate)} - ${escapeHtml(item.endDate)}</p>
     </div>
-    ${renderBulletList(item.highlights)}
+    ${renderBulletList(item.bullets)}
   </div>`;
 }
 
-function renderProjectItem(item: ResumeProjectItem) {
+function renderProjectItem(item: ResumeProject) {
   return `<div class="entry">
-    <h3>${escapeHtml(item.name)}</h3>
+    <div class="entry-heading">
+      <h3>${escapeHtml(item.name)}</h3>
+      ${item.link ? `<a href="${escapeHtml(item.link)}">Project link</a>` : ""}
+    </div>
     <p>${escapeHtml(item.description)}</p>
-    ${renderBulletList(item.highlights)}
+    ${item.technologies?.length ? `<p class="muted">${escapeHtml(item.technologies.join(", "))}</p>` : ""}
+    ${item.bullets?.length ? renderBulletList(item.bullets) : ""}
   </div>`;
 }
 
 function renderBulletList(items: string[]) {
   return `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+}
+
+function getContactItems(contact: ResumeContact) {
+  return [
+    contact.email ? { href: `mailto:${contact.email}`, label: contact.email } : null,
+    contact.phone ? { label: contact.phone } : null,
+    contact.linkedinUrl
+      ? { href: contact.linkedinUrl, label: "LinkedIn" }
+      : null,
+    contact.githubUrl ? { href: contact.githubUrl, label: "GitHub" } : null,
+    contact.portfolioUrl
+      ? { href: contact.portfolioUrl, label: "Portfolio" }
+      : null,
+    contact.location ? { label: contact.location } : null,
+  ].filter((item): item is { href?: string; label: string } => Boolean(item));
+}
+
+function resolveAccentColor(value: string | undefined) {
+  if (!value) {
+    return "#0f766e";
+  }
+
+  const normalizedValue = value.trim().toLowerCase();
+
+  if (/^#[0-9a-f]{6}$/i.test(normalizedValue)) {
+    return normalizedValue;
+  }
+
+  return safeAccentColors[normalizedValue] ?? "#0f766e";
 }
 
 function escapeHtml(value: string) {

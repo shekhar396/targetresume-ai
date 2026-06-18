@@ -3,9 +3,10 @@
 import { FormEvent, useState } from "react";
 import { ResumePreview } from "@/components/resume/ResumePreview";
 import type {
-  GenerateResumeInput,
-  TailoredResume,
-} from "@/lib/openai/resume-generator";
+  GenerateResumeRequest,
+  Resume,
+  ResumeContact,
+} from "@/types/resume";
 
 type BuilderFormValues = {
   profileText: string;
@@ -13,15 +14,31 @@ type BuilderFormValues = {
   targetPosition: string;
   jobDescription: string;
   additionalInstructions: string;
+  email: string;
+  phone: string;
+  linkedinUrl: string;
+  githubUrl: string;
+  portfolioUrl: string;
+  location: string;
 };
 
 type BuilderFormErrors = Partial<
-  Record<"profileText" | "targetCompany" | "targetPosition" | "currentResume", string>
+  Record<
+    | "profileText"
+    | "targetCompany"
+    | "targetPosition"
+    | "currentResume"
+    | "email"
+    | "linkedinUrl"
+    | "githubUrl"
+    | "portfolioUrl",
+    string
+  >
 >;
 
 type GenerateResumeSuccessResponse = {
   success: true;
-  resume: TailoredResume;
+  resume: Resume;
 };
 
 type GenerateResumeErrorResponse = {
@@ -42,20 +59,24 @@ const initialValues: BuilderFormValues = {
   targetPosition: "",
   jobDescription: "",
   additionalInstructions: "",
+  email: "",
+  phone: "",
+  linkedinUrl: "",
+  githubUrl: "",
+  portfolioUrl: "",
+  location: "",
 };
 
 export function BuilderForm() {
   const [values, setValues] = useState<BuilderFormValues>(initialValues);
   const [errors, setErrors] = useState<BuilderFormErrors>({});
-  const [resume, setResume] = useState<TailoredResume | null>(null);
+  const [resume, setResume] = useState<Resume | null>(null);
   const [submittedInstructions, setSubmittedInstructions] = useState("");
   const [apiError, setApiError] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [generationAction, setGenerationAction] = useState<
-    "generating" | "updating"
-  >("generating");
+  const mode: GenerateResumeRequest["mode"] = resume ? "revise" : "generate";
 
   function updateValue(field: keyof BuilderFormValues, value: string) {
     setValues((currentValues) => ({
@@ -87,6 +108,25 @@ export function BuilderForm() {
       nextErrors.targetPosition = "Target position is required.";
     }
 
+    if (
+      formValues.email.trim() &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formValues.email.trim())
+    ) {
+      nextErrors.email = "Email must be a valid email address.";
+    }
+
+    for (const field of [
+      "linkedinUrl",
+      "githubUrl",
+      "portfolioUrl",
+    ] as const) {
+      const value = formValues[field].trim();
+
+      if (value && !/^https?:\/\//i.test(value)) {
+        nextErrors[field] = "URL must start with http:// or https://.";
+      }
+    }
+
     return nextErrors;
   }
 
@@ -99,15 +139,17 @@ export function BuilderForm() {
     setExportError(null);
 
     if (Object.keys(nextErrors).length > 0) {
-      setResume(null);
       return;
     }
 
     const existingResume = resume;
-    const requestBody: GenerateResumeInput = {
+    const contact = buildContact(values);
+    const requestBody: GenerateResumeRequest = {
+      mode: existingResume ? "revise" : "generate",
       profileText: values.profileText.trim(),
       targetCompany: values.targetCompany.trim(),
       targetPosition: values.targetPosition.trim(),
+      contact,
     };
 
     const jobDescription = values.jobDescription.trim();
@@ -123,9 +165,7 @@ export function BuilderForm() {
       requestBody.currentResume = existingResume;
     }
 
-    setGenerationAction(existingResume ? "updating" : "generating");
     setIsGenerating(true);
-    setResume(null);
     setSubmittedInstructions("");
 
     try {
@@ -227,6 +267,64 @@ export function BuilderForm() {
         </div>
 
         <div className="mt-6 space-y-5">
+          <div className="border border-[color:var(--border)] bg-slate-50 p-4">
+            <h3 className="text-base font-semibold text-[color:var(--foreground)]">
+              Contact Information
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
+              Add the contact details you want shown on the resume. These
+              fields are used directly and are not guessed by AI.
+            </p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <TextInput
+                error={errors.email}
+                id="email"
+                label="Email address"
+                onChange={(value) => updateValue("email", value)}
+                placeholder="name@example.com"
+                value={values.email}
+              />
+              <TextInput
+                id="phone"
+                label="Phone number"
+                onChange={(value) => updateValue("phone", value)}
+                placeholder="+1 555 123 4567"
+                value={values.phone}
+              />
+              <TextInput
+                error={errors.linkedinUrl}
+                id="linkedinUrl"
+                label="LinkedIn URL"
+                onChange={(value) => updateValue("linkedinUrl", value)}
+                placeholder="https://linkedin.com/in/your-profile"
+                value={values.linkedinUrl}
+              />
+              <TextInput
+                error={errors.githubUrl}
+                id="githubUrl"
+                label="GitHub URL"
+                onChange={(value) => updateValue("githubUrl", value)}
+                placeholder="https://github.com/your-handle"
+                value={values.githubUrl}
+              />
+              <TextInput
+                error={errors.portfolioUrl}
+                id="portfolioUrl"
+                label="Portfolio URL"
+                onChange={(value) => updateValue("portfolioUrl", value)}
+                placeholder="https://your-site.com"
+                value={values.portfolioUrl}
+              />
+              <TextInput
+                id="location"
+                label="Location"
+                onChange={(value) => updateValue("location", value)}
+                placeholder="City, Country"
+                value={values.location}
+              />
+            </div>
+          </div>
+
           <div>
             <label
               className="block text-sm font-semibold text-[color:var(--foreground)]"
@@ -348,8 +446,15 @@ export function BuilderForm() {
               className="block text-sm font-semibold text-[color:var(--foreground)]"
               htmlFor="additionalInstructions"
             >
-              Additional Instructions (Optional)
+              {mode === "revise"
+                ? "Revision Instructions"
+                : "Additional Instructions (Optional)"}
             </label>
+            <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
+              {mode === "revise"
+                ? "Use this to change specific content or design only. Example: add my email at the top right, remove projects, use a blue accent color, rewrite only the summary, or keep everything else unchanged."
+                : "Use this to guide the first version of your resume. Example: emphasize Kubernetes, keep it concise, focus on leadership, or use a modern professional style."}
+            </p>
             <textarea
               className="mt-2 min-h-32 w-full resize-y border border-[color:var(--border)] bg-white px-3 py-3 text-sm leading-6 text-[color:var(--foreground)] outline-none transition placeholder:text-slate-400 focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary)]/20"
               id="additionalInstructions"
@@ -374,14 +479,14 @@ export function BuilderForm() {
             className="inline-flex min-h-12 items-center justify-center rounded-md bg-[color:var(--primary)] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[color:var(--primary-dark)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-400"
             disabled={isGenerating}
             type="submit"
-          >
+            >
             {isGenerating
-              ? generationAction === "updating"
+              ? mode === "revise"
                 ? "Updating resume..."
                 : "Generating resume..."
-              : resume
-                ? "Update Resume Preview"
-                : "Generate Resume Preview"}
+              : mode === "revise"
+                ? "Update Resume"
+                : "Generate Resume"}
           </button>
           <p className="text-sm text-[color:var(--muted)]">
             Generates a structured resume with server-side AI.
@@ -391,6 +496,14 @@ export function BuilderForm() {
         {apiError ? (
           <div className="mt-5 border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
             {apiError}
+          </div>
+        ) : null}
+
+        {resume ? (
+          <div className="mt-5 border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-medium leading-6 text-teal-900">
+            Tip: For targeted edits, write exactly what you want changed in
+            Revision Instructions, then click Update Resume. Unmentioned
+            sections should stay unchanged.
           </div>
         ) : null}
       </form>
@@ -440,13 +553,77 @@ export function BuilderForm() {
         ) : (
           <div className="mt-6 border border-dashed border-[color:var(--border)] bg-slate-50 px-4 py-8 text-center text-sm leading-6 text-[color:var(--muted)]">
             {isGenerating
-              ? generationAction === "updating"
+              ? mode === "revise"
                 ? "Updating the resume preview..."
                 : "Generating the resume preview..."
               : "Complete the required fields and submit to generate the resume preview."}
           </div>
         )}
       </aside>
+    </div>
+  );
+}
+
+function buildContact(values: BuilderFormValues): ResumeContact {
+  const contact: ResumeContact = {};
+
+  for (const [key, value] of Object.entries({
+    email: values.email,
+    phone: values.phone,
+    linkedinUrl: values.linkedinUrl,
+    githubUrl: values.githubUrl,
+    portfolioUrl: values.portfolioUrl,
+    location: values.location,
+  }) as Array<[keyof ResumeContact, string]>) {
+    const trimmedValue = value.trim();
+
+    if (trimmedValue) {
+      contact[key] = trimmedValue;
+    }
+  }
+
+  return contact;
+}
+
+function TextInput({
+  error,
+  id,
+  label,
+  onChange,
+  placeholder,
+  value,
+}: {
+  error?: string;
+  id: keyof BuilderFormValues;
+  label: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  value: string;
+}) {
+  return (
+    <div>
+      <label
+        className="block text-sm font-semibold text-[color:var(--foreground)]"
+        htmlFor={id}
+      >
+        {label}
+      </label>
+      <input
+        aria-describedby={error ? `${id}-error` : undefined}
+        aria-invalid={Boolean(error)}
+        className="mt-2 h-12 w-full border border-[color:var(--border)] bg-white px-3 text-sm text-[color:var(--foreground)] outline-none transition placeholder:text-slate-400 focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary)]/20"
+        id={id}
+        name={id}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        type="text"
+        value={value}
+      />
+      {error ? (
+        <p className="mt-2 text-sm font-medium text-red-700" id={`${id}-error`}>
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

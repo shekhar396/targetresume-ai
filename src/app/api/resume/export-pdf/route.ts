@@ -1,6 +1,6 @@
 import { chromium } from "playwright";
 import { renderResumeHtml } from "@/lib/pdf/resume-html";
-import { isTailoredResume } from "@/lib/openai/resume-generator";
+import { normalizeResume } from "@/types/resume";
 
 export const runtime = "nodejs";
 
@@ -19,7 +19,9 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!isTailoredResume(payload)) {
+  const resume = normalizeResume(payload);
+
+  if (!resume) {
     return Response.json(
       {
         success: false,
@@ -35,7 +37,7 @@ export async function POST(request: Request) {
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
 
-    await page.setContent(renderResumeHtml(payload), {
+    await page.setContent(renderResumeHtml(resume), {
       waitUntil: "networkidle",
     });
 
