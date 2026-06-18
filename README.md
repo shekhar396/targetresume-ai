@@ -27,13 +27,49 @@ The initial version will support:
 
 See [docs/mvp-scope.md](docs/mvp-scope.md) for the full scope and exclusions.
 
-## Planned Tech Stack
+## Tech Stack
 
-- Next.js
+- Next.js App Router
 - TypeScript
 - Tailwind CSS
+- ESLint
+- npm
 - OpenAI API
 - Playwright for server-side PDF generation
+
+OpenAI and PDF export are planned for v1.0 implementation, but are not implemented in the initial app shell.
+
+## Local Setup
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Create a local environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+Run the development server:
+
+```bash
+npm run dev
+```
+
+Check code quality:
+
+```bash
+npm run lint
+```
+
+Create a production build:
+
+```bash
+npm run build
+```
 
 ## Environment Variables
 
@@ -49,26 +85,46 @@ Future production deployments may add variables for authentication, persistence,
 
 ```text
 targetresume-ai/
-  app/
-    api/
-      generate-resume/
-      export-pdf/
-    page.tsx
-    layout.tsx
-  components/
-    resume/
-    ui/
-  lib/
-    openai.ts
-    prompts.ts
-    resume-schema.ts
-    pdf.ts
+  src/
+    app/
+      api/
+        generate-resume/
+        export-pdf/
+      globals.css
+      layout.tsx
+      page.tsx
+    components/
+      resume/
+      ui/
+    lib/
+      openai.ts
+      prompts.ts
+      resume-schema.ts
+      pdf.ts
   docs/
   public/
   tests/
 ```
 
 The exact structure may evolve during implementation, but v1.0 should remain compact and easy to review.
+
+## Current App Shell
+
+The repository now includes a minimal Next.js app with:
+
+```text
+src/
+  app/
+    globals.css
+    layout.tsx
+    page.tsx
+```
+
+The landing page introduces TargetResume AI and the v1.0 workflow:
+
+```text
+LinkedIn text -> target role/company -> AI tailored resume -> HTML preview -> PDF export
+```
 
 ## Documentation
 
@@ -80,4 +136,4 @@ The exact structure may evolve during implementation, but v1.0 should remain com
 
 ## Current Status
 
-Project documentation has been initialized. Application code has not been scaffolded yet.
+Project documentation and the initial Next.js application shell have been initialized. OpenAI resume generation and PDF export are intentionally not implemented yet.
